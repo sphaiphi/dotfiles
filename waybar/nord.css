@@ -1,0 +1,13 @@
+/* ~/.config/wofi/themes/nord.css
+ *
+ * Same values as ../../waybar/themes/nord.css — duplicated per app,
+ * same reasoning as the sway/waybar split: GTK-CSS and sway config
+ * can't share a source, and wofi can't share waybar's CSS file
+ * either without an awkward cross-config-dir dependency. Kept in
+ * sync by hand.
+ */
+@define-color bg             #2E3440;
+@define-color bg_selection   #434C5E;
+@define-color fg             #D8DEE9;
+@define-color focus          #88C0D0;
+@define-color text_on_focus  #2E3440;

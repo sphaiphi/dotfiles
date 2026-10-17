@@ -1,0 +1,32 @@
+# ~/.config/sway/config
+#
+# Entrypoint only. This file intentionally contains no settings of its
+# own — everything lives in small, self-contained snippets under
+# config.d/, loaded in numeric order. Delete or override any single
+# snippet without touching the rest.
+#
+# Read `man 5 sway` for the complete reference.
+
+### Environment
+# NOT `include`d here — Sway's `include` only accepts sway config
+# syntax (bindsym, set, etc.), not plain KEY=VALUE lines. Environment
+# variables for the session are set separately, before Sway even
+# starts, via systemd's environment.d(5) mechanism. See the setup
+# instructions at the top of the environment file itself (now
+# installed at ~/.config/environment.d/, not here).
+
+### Core configuration snippets, loaded in order:
+#   00 - variables      ($mod, $term, $menu, workspace names, colors)
+#   10 - appearance      fonts, borders, gaps, titlebars
+#   20 - input / output   keyboard, touchpad, gestures, displays, wallpaper
+#   30 - autostart        idle handler, notifications, polkit, wallpaper daemon
+#   40 - bindings-core     launch, focus, move, workspaces, layout
+#   50 - modes             resize mode, screenshot mode
+#   60 - window-rules       floating/dialog rules, shortcuts inhibitor
+#   70 - bar                status bar
+include config.d/*.conf
+
+### Local, machine-specific overrides (git-ignored / not shared)
+# Put per-host quirks here (e.g. output layout for a specific monitor
+# setup, an input override for a specific keyboard). Safe to be absent.
+include config.d.local/*.conf
