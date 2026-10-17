@@ -1,0 +1,42 @@
+/* ~/.config/wofi/style.css
+ *
+ * Structure only — no raw hex colors, same pattern as
+ * ../waybar/style.css. To switch themes, change ONLY the url() below.
+ */
+@import url("themes/nord.css");
+
+window {
+    background-color: @bg;
+    border: 2px solid @focus;
+    font-family: sans-serif;
+    font-size: 14px;
+}
+
+#input {
+    margin: 4px;
+    padding: 6px;
+    background-color: @bg_selection;
+    color: @fg;
+    border: none;
+}
+
+#inner-box {
+    margin: 4px;
+}
+
+#entry {
+    padding: 6px;
+    color: @fg;
+}
+
+#entry:selected {
+    background-color: @focus;
+}
+
+#entry:selected #text {
+    color: @text_on_focus;
+}
+
+#text {
+    color: @fg;
+}

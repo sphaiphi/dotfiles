@@ -74,12 +74,18 @@ mkdir -p ~/.config/environment.d
 mkdir -p ~/.config/waybar/themes ~/.config/foot/themes ~/.config/wofi/themes
 mkdir -p ~/.local/bin ~/Pictures/Screenshots
 
-# 2. Copy each file to its path above
+# 2. Copy the delivered tree (this folder's sway/, waybar/, foot/, wofi/,
+#    environment.d/ directories mirror ~/.config exactly; bin/ -> ~/.local/bin)
+cp -r sway waybar foot wofi environment.d ~/.config/
+cp bin/sway-theme ~/.local/bin/
 chmod +x ~/.local/bin/sway-theme
 
 # 3. Log out and back in
 #    (required once, specifically for environment.d — a sway reload
 #    does NOT pick up environment.d changes, only a fresh login does)
+
+# 4. Verify the environment reached your session (from a foot terminal):
+echo $MOZ_ENABLE_WAYLAND      # expect 1; if empty, see "Known fixes" below
 ```
 
 ## Switching themes
@@ -87,11 +93,14 @@ chmod +x ~/.local/bin/sway-theme
 Run `sway-theme` with no arguments to see the current theme and what's
 available; `sway-theme catppuccin` to switch. It edits the one
 "pointer" line each app has (sway's `include`, Waybar/wofi's
-`@import`, foot's `include=`) and applies the change live where
-possible: sway reloads immediately, Waybar is killed and relaunched
-(no hot-reload for `style.css` exists), foot/wofi pick it up
-naturally since they aren't long-running daemons the same way — foot
-specifically can't retheme windows already open, only new ones.
+`@import`, foot's `include=`; each match is anchored to the start of
+that line, so comments are never touched) and applies the change live
+where possible: `swaymsg reload` reloads sway AND makes sway respawn
+Waybar (it runs as sway's `bar`), so Waybar picks up the new style
+without the script touching it — the script deliberately does not
+kill/relaunch Waybar, which would leave an untracked duplicate.
+wofi reads its style on each launch; foot can't retheme windows that are
+already open, only new ones.
 
 It fails closed: if a theme is missing even one of the four files it
 needs, nothing gets switched.
@@ -165,8 +174,25 @@ Optional, only if you use these apps (referenced in `60-window-rules.conf`):
 - **Environment variables live in `~/.config/environment.d/10-sway.conf`,
   not inside the sway config.** Sway's `include` only parses sway
   command syntax — plain `KEY=VALUE` lines there produce a config
-  error on every line. `environment.d` is read by systemd at login,
-  before Sway even starts; changes need a fresh login, not a reload.
+  error on every line. `environment.d` is applied by the systemd user
+  manager at login; changes need a fresh login, not a reload. It
+  reliably covers services and D-Bus-activated apps, but whether
+  apps started from sway keybinds inherit it depends on how you log
+  in — so test with `echo $MOZ_ENABLE_WAYLAND` in foot. If empty, put
+  the same lines as `export` in `~/.profile`.
+- **Environment variables deliberately NOT set:** `GTK_THEME` (clashes
+  with libadwaita, ignores your theme — use
+  `gsettings set org.gnome.desktop.interface color-scheme prefer-dark`),
+  `QT_QPA_PLATFORM` is `wayland;xcb` (falls back instead of failing),
+  `SDL_VIDEODRIVER`/`CLUTTER_BACKEND` (break apps; unnecessary), and
+  `XDG_CURRENT_DESKTOP`/`XDG_SESSION_TYPE` (leak into other sessions;
+  the former is passed by value in `30-autostart.conf`).
+- **File-chooser float rule is exact-match.** `60-window-rules.conf`
+  floats the portal's GTK chooser by `app_id` plus exact dialog titles —
+  an open-ended `^Open.*` pattern would float any browser whose page
+  title starts with "Open".
+- **Never kill/relaunch Waybar by hand after a reload** — sway already
+  respawns it; a manual `waybar &` creates a second bar.
 - **`dbus-update-activation-environment --systemd WAYLAND_DISPLAY
   XDG_CURRENT_DESKTOP SWAYSOCK`** is the first `exec` in
   `30-autostart.conf`. Without it, anything requesting
@@ -212,11 +238,15 @@ Optional, only if you use these apps (referenced in `60-window-rules.conf`):
 | `$mod+Shift+c` | reload sway config |
 | `$mod+Shift+e` | exit sway (confirm dialog) |
 | `$mod+Escape` | lock screen |
+| `$mod+c` | clipboard history (wofi picker, copies the entry back; paste with `Ctrl+V`, or `Ctrl+Shift+V` in foot) |
 | `$mod` + arrows | move focus |
 | `$mod+Shift` + arrows | move window |
 | `$mod` + 1–0 | switch workspace |
 | `$mod+Shift` + 1–0 | move window to workspace |
 | `$mod+b` / `v` | split horizontal / vertical |
+| `$mod+n` | toggle split orientation |
+| `$mod+Tab` | back-and-forth between the last two workspaces |
+| `$mod+Ctrl+←/→` | previous / next workspace |
 | `$mod+s` / `w` | stacking / tabbed layout |
 | `$mod+f` | fullscreen |
 | `$mod+Shift+space` | floating toggle |

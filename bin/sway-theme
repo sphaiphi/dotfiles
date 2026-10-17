@@ -1,0 +1,101 @@
+#!/usr/bin/env bash
+#
+# ~/.local/bin/sway-theme
+#
+# Switches the active theme across sway, waybar, foot, and wofi by
+# editing the one "pointer" line each of them has, then applies the
+# change live where that's actually possible.
+#
+# Install: chmod +x ~/.local/bin/sway-theme
+#          (~/.local/bin is on PATH by default on current Fedora and
+#          Ubuntu — if it isn't on yours, add it in ~/.profile)
+#
+# Usage: sway-theme            # show current theme + available themes
+#        sway-theme <name>     # switch to <name>
+
+set -euo pipefail
+
+SWAY_DIR="$HOME/.config/sway"
+WAYBAR_DIR="$HOME/.config/waybar"
+FOOT_DIR="$HOME/.config/foot"
+WOFI_DIR="$HOME/.config/wofi"
+VARS_FILE="$SWAY_DIR/config.d/00-variables.conf"
+
+list_themes() {
+    find "$SWAY_DIR/themes" -maxdepth 1 -name '*.conf' -exec basename {} .conf \; 2>/dev/null | sort
+}
+
+current_theme() {
+    sed -n 's#^include themes/\(.*\)\.conf$#\1#p' "$VARS_FILE" 2>/dev/null | head -1
+}
+
+if [ $# -eq 0 ]; then
+    echo "Current theme: $(current_theme)"
+    echo
+    echo "Available themes:"
+    list_themes | sed 's/^/  /'
+    echo
+    echo "Usage: $(basename "$0") <theme-name>"
+    exit 0
+fi
+
+THEME="$1"
+
+# Reject anything that isn't a plain filename component — this builds
+# file paths from $THEME below, so don't trust it uncritically.
+if ! [[ "$THEME" =~ ^[A-Za-z0-9_-]+$ ]]; then
+    echo "Invalid theme name: $THEME" >&2
+    exit 1
+fi
+
+# Verify the theme exists for all four apps before touching anything —
+# fail closed rather than leaving some apps switched and others not.
+missing=0
+for f in \
+    "$SWAY_DIR/themes/$THEME.conf" \
+    "$WAYBAR_DIR/themes/$THEME.css" \
+    "$FOOT_DIR/themes/$THEME.ini" \
+    "$WOFI_DIR/themes/$THEME.css"
+do
+    if [ ! -f "$f" ]; then
+        echo "Missing: $f" >&2
+        missing=1
+    fi
+done
+if [ "$missing" -ne 0 ]; then
+    echo "Theme '$THEME' is incomplete — not switching anything." >&2
+    exit 1
+fi
+
+# Each substitution is anchored to the start of the one pointer line, so
+# comments that happen to mention a theme path are never rewritten.
+sed -i -E "s#^(include themes/)[A-Za-z0-9_-]+\.conf#\1$THEME.conf#"       "$VARS_FILE"
+sed -i -E "s#^(@import url\(\"themes/)[A-Za-z0-9_-]+\.css#\1$THEME.css#" "$WAYBAR_DIR/style.css"
+sed -i -E "s#^(include=themes/)[A-Za-z0-9_-]+\.ini#\1$THEME.ini#"          "$FOOT_DIR/foot.ini"
+sed -i -E "s#^(@import url\(\"themes/)[A-Za-z0-9_-]+\.css#\1$THEME.css#" "$WOFI_DIR/style.css"
+
+echo "Switched config files to theme: $THEME"
+
+# --- Apply live where possible ---
+
+# sway: has a genuine reload mechanism. A reload ALSO restarts Waybar:
+# sway spawns it as its `bar` (swaybar_command) and respawns it on every
+# reload, so it re-reads style.css and the new theme by itself. Do NOT
+# kill/relaunch Waybar here — a second, untracked instance would survive
+# and the next reload would start yet another.
+if command -v swaymsg >/dev/null 2>&1 && [ -n "${SWAYSOCK:-}" ]; then
+    swaymsg reload
+    echo "  sway: reloaded (this also restarts waybar with the new theme)"
+else
+    echo "  sway: not running in this session — reload manually (\$mod+Shift+c)"
+    echo "  waybar: picks up the theme the next time sway starts it"
+fi
+
+# foot: no reload mechanism at all. Existing windows keep whatever
+# theme they started with; this can't be worked around from outside
+# the process.
+echo "  foot: existing windows keep their old theme — new windows use $THEME"
+
+# wofi: not a persistent daemon, launched fresh each time ($mod+d), so
+# nothing to restart — it just picks up style.css on its next launch.
+echo "  wofi: picks up the new theme automatically next launch"

@@ -1,42 +1,118 @@
-/* ~/.config/wofi/style.css
+/* ~/.config/waybar/style.css
  *
- * Structure only — no raw hex colors, same pattern as
- * ../waybar/style.css. To switch themes, change ONLY the url() below.
+ * Structure only — no raw hex values. Every color comes from the active
+ * theme below. To switch themes run `sway-theme <name>` (it edits ONLY
+ * the @import line), or change the url() by hand and restart Waybar.
+ *
+ * Flat fills only: no transitions, shadows or blur, so this costs
+ * nothing extra to composite.
  */
 @import url("themes/nord.css");
 
-window {
-    background-color: @bg;
-    border: 2px solid @focus;
+* {
     font-family: sans-serif;
-    font-size: 14px;
-}
-
-#input {
-    margin: 4px;
-    padding: 6px;
-    background-color: @bg_selection;
-    color: @fg;
+    font-size: 13px;
+    min-height: 0;
     border: none;
+    border-radius: 0;
 }
 
-#inner-box {
-    margin: 4px;
-}
-
-#entry {
-    padding: 6px;
+window#waybar {
+    background-color: @bg;
     color: @fg;
 }
 
-#entry:selected {
-    background-color: @focus;
+/* Workspaces */
+#workspaces button {
+    padding: 0 10px;
+    background-color: transparent;
+    color: @fg;
 }
 
-#entry:selected #text {
+#workspaces button.focused {
+    background-color: @focus;
     color: @text_on_focus;
 }
 
-#text {
+#workspaces button.urgent {
+    background-color: @urgent;
+    color: @text_on_urgent;
+}
+
+#workspaces button:hover {
+    background-color: @bg_selection;
+}
+
+/* Mode indicator (resize / screenshot) */
+#mode {
+    padding: 0 10px;
+    background-color: @urgent;
+    color: @text_on_urgent;
+}
+
+/* Scratchpad count, tiling/stacking/tabbed indicator */
+#scratchpad {
+    padding: 0 10px;
+    background-color: @purple;
+    color: @text_on_focus;
+}
+
+#custom-layout {
+    padding: 0 10px;
+    color: @frost_deep;
+}
+
+/* Focused window title */
+#window {
+    padding: 0 10px;
     color: @fg;
+}
+
+/* Keyboard layout indicator */
+#language {
+    padding: 0 10px;
+    background-color: @frost_deep;
+    color: @text_on_focus;
+}
+
+/* Right-side modules: consistent spacing */
+#idle_inhibitor,
+#backlight,
+#tray,
+#network,
+#pulseaudio,
+#battery,
+#clock {
+    padding: 0 10px;
+    color: @fg;
+}
+
+#idle_inhibitor.activated {
+    color: @warning;
+}
+
+#battery.charging {
+    color: @success;
+}
+
+#battery.warning:not(.charging) {
+    color: @warning;
+}
+
+#battery.critical:not(.charging) {
+    color: @urgent;
+    font-weight: bold;
+}
+
+#network.disconnected,
+#pulseaudio.muted {
+    color: @inactive;
+}
+
+#tray > .passive {
+    opacity: 0.5;
+}
+
+#tray > .needs-attention {
+    background-color: @urgent;
 }

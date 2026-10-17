@@ -1,0 +1,28 @@
+/* ~/.config/waybar/themes/nord.css
+ *
+ * Nord theme — color definitions only, no layout/structure. Uses
+ * GTK-CSS's native @define-color (well-supported in GTK3, unlike
+ * standard CSS custom properties / var()). style.css @imports this file
+ * and references colors as @name everywhere, so switching themes means
+ * swapping this file only (`sway-theme <name>` does it for you).
+ *
+ * To add another theme: copy this file to themes/<name>.css with the
+ * same @define-color names and change the values.
+ *
+ * Same palette as ~/.config/sway/themes/nord.conf — kept in sync by
+ * hand, since GTK-CSS and sway config can't share a single source.
+ */
+@define-color bg             #2E3440;
+@define-color bg_alt         #3B4252;
+@define-color bg_selection   #434C5E;
+@define-color inactive       #4C566A;
+@define-color fg             #D8DEE9;
+@define-color fg_bright      #ECEFF4;
+@define-color focus          #88C0D0;
+@define-color frost_deep     #5E81AC;
+@define-color urgent         #BF616A;
+@define-color warning        #EBCB8B;
+@define-color success        #A3BE8C;
+@define-color purple         #B48EAD;
+@define-color text_on_focus  #2E3440;
+@define-color text_on_urgent #ECEFF4;

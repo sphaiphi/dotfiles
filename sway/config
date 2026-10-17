@@ -12,14 +12,17 @@
 # syntax (bindsym, set, etc.), not plain KEY=VALUE lines. Environment
 # variables for the session are set separately, before Sway even
 # starts, via systemd's environment.d(5) mechanism. See the setup
-# instructions at the top of the environment file itself (now
-# installed at ~/.config/environment.d/, not here).
+# instructions in ~/.config/environment.d/10-sway.conf (read at login,
+# so changes there need a fresh login, not a sway reload).
 
 ### Core configuration snippets, loaded in order:
-#   00 - variables      ($mod, $term, $menu, workspace names, colors)
-#   10 - appearance      fonts, borders, gaps, titlebars
+#   00 - variables      (includes the active theme from themes/<name>.conf,
+#                        which holds ALL colors; then $mod, $term, $menu,
+#                        $lock, $file_manager, workspace names)
+#   10 - appearance      fonts, borders, gaps, titlebars, client colors
 #   20 - input / output   keyboard, touchpad, gestures, displays, wallpaper
-#   30 - autostart        idle handler, notifications, polkit, wallpaper daemon
+#   30 - autostart        dbus env, notifications, polkit, idle handler,
+#                        clipboard history
 #   40 - bindings-core     launch, focus, move, workspaces, layout
 #   50 - modes             resize mode, screenshot mode
 #   60 - window-rules       floating/dialog rules, shortcuts inhibitor
@@ -29,4 +32,8 @@ include config.d/*.conf
 ### Local, machine-specific overrides (git-ignored / not shared)
 # Put per-host quirks here (e.g. output layout for a specific monitor
 # setup, an input override for a specific keyboard). Safe to be absent.
+# Loaded last, so it can override bindings, rules, outputs and inputs.
+# It can NOT redefine variables ($term, $menu...) used by earlier lines:
+# sway substitutes variables line by line as it reads. Override the
+# bindsym itself instead.
 include config.d.local/*.conf

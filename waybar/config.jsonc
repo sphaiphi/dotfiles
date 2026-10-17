@@ -11,7 +11,8 @@
 // glyphs and it'll pick them up immediately.
 //
 // Colors are NOT set here — this file only lays out modules and their
-// text formats. Every color lives in style.css (Nord palette).
+// text formats. Every color comes from the active theme, imported by
+// style.css from themes/<name>.css (switch with `sway-theme <name>`).
 {
     "layer": "top",
     "position": "top",

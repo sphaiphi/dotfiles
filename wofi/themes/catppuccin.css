@@ -1,0 +1,11 @@
+/* ~/.config/wofi/themes/catppuccin.css
+ *
+ * Same values as ../../waybar/themes/catppuccin.css and
+ * ../../themes/catppuccin.conf. Kept in sync by hand, same as the
+ * Nord pairing.
+ */
+@define-color bg             #1e1e2e;
+@define-color bg_selection   #45475a;
+@define-color fg             #cdd6f4;
+@define-color focus          #89b4fa;
+@define-color text_on_focus  #1e1e2e;
