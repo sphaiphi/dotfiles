@@ -1,0 +1,291 @@
+" ==============================================================================
+" Minimalist plugin-free vimrc  (Vim 8.2+; the statusline needs 8.1.1372+)
+" Copy to ~/.vimrc
+" ==============================================================================
+set nocompatible
+
+" ==============================================================================
+" 1. CORE & UX
+" ==============================================================================
+syntax enable
+filetype plugin indent on
+set encoding=utf-8
+set number relativenumber       " Hybrid line numbers
+set cursorline
+set scrolloff=8                 " Keep context lines around the cursor
+set signcolumn=yes              " Avoid text shifting when signs appear
+set mouse=a
+set hidden                      " Allow hidden buffers without saving
+set noshowmode                  " The statusline already shows the mode
+set splitbelow splitright
+set timeoutlen=500              " Shorter wait for mapped key sequences
+set ttimeoutlen=50              " Snappy <Esc> in terminals
+set updatetime=300
+set nowrap
+set belloff=all
+set backspace=indent,eol,start
+
+" Truecolor only when the terminal really supports it
+if has('termguicolors') && ($COLORTERM ==# 'truecolor' || $COLORTERM ==# '24bit')
+    " tmux/screen TERM values don't advertise RGB escapes to Vim
+    if &term =~# '^\(tmux\|screen\)'
+        let &t_8f = "\<Esc>[38;2;%lu;%lu;%lum"
+        let &t_8b = "\<Esc>[48;2;%lu;%lu;%lum"
+    endif
+    set termguicolors
+endif
+
+" Share the system clipboard (only if this Vim was built with +clipboard)
+if has('clipboard')
+    set clipboard^=unnamedplus
+endif
+
+" Persistent undo, no swap/backup litter
+set undofile
+let s:undo_dir = $HOME . '/.vim/undo'
+if !isdirectory(s:undo_dir)
+    silent! call mkdir(s:undo_dir, 'p', 0700)
+endif
+let &undodir = s:undo_dir . '//'
+set noswapfile nobackup nowritebackup
+
+" Reload files changed outside of Vim
+set autoread
+augroup AutoReload
+    autocmd!
+    autocmd FocusGained,BufEnter,CursorHold * silent! checktime
+augroup END
+
+" ==============================================================================
+" 2. SEARCH & NAVIGATION
+" ==============================================================================
+set ignorecase smartcase
+set incsearch nohlsearch
+set path+=**                    " :find searches subdirectories recursively
+set wildmenu
+set wildmode=longest:full,full
+set wildignore+=*/.git/*,*/node_modules/*,*/__pycache__/*,*.o,*.pyc,*.swp
+
+" Use ripgrep for :grep when available
+if executable('rg')
+    set grepprg=rg\ --vimgrep\ --smart-case
+    set grepformat=%f:%l:%c:%m
+endif
+
+" :Grep runs quietly, doesn't jump to the first hit, and opens the quickfix list
+command! -nargs=+ -complete=file_in_path Grep silent grep! <args> | redraw! | cwindow
+
+" ctags: <C-]> to jump, <C-t> to go back
+set tags=./tags;,tags
+
+" ==============================================================================
+" 3. INDENTATION & TABS
+" ==============================================================================
+set tabstop=4 shiftwidth=4 softtabstop=4
+set expandtab smarttab
+set autoindent
+set shiftround
+
+" ==============================================================================
+" 4. COMPLETION
+" ==============================================================================
+set completeopt=menuone,noselect
+set shortmess+=c
+
+" ==============================================================================
+" 5. NETRW FILE EXPLORER
+" ==============================================================================
+let g:netrw_banner = 0
+let g:netrw_liststyle = 3       " Tree view
+let g:netrw_winsize = 25        " Sidebar takes 25% of the screen
+let g:netrw_browse_split = 4    " Open files in the previous window
+let g:netrw_altv = 1
+" Netrw resets window options; keep (relative) line numbers in the sidebar too
+let g:netrw_bufsettings = 'noma nomod nu rnu nobl nowrap ro'
+
+" ==============================================================================
+" 6. KEYMAPS
+" ==============================================================================
+" Mappings can't have trailing comments, so comments live on their own lines.
+let mapleader = "\<Space>"
+nnoremap <Space> <Nop>
+
+" Toggle file explorer sidebar
+nnoremap <leader>e :Lexplore<CR>
+" Find file by name (type the name, <Tab> to complete)
+nnoremap <leader>f :find *
+" List and switch open buffers
+nnoremap <leader>b :buffers<CR>:buffer<Space>
+" Open a terminal at the bottom
+nnoremap <leader>t :botright term<CR>
+" Project-wide search (see :Grep), then browse results in the quickfix list
+nnoremap <leader>/ :Grep<Space>
+nnoremap <leader>q :copen<CR>
+nnoremap ]q :cnext<CR>
+nnoremap [q :cprev<CR>
+" Buffer navigation
+nnoremap ]b :bnext<CR>
+nnoremap [b :bprev<CR>
+" Toggle search highlighting (off by default)
+nnoremap <leader>h :set hlsearch!<CR>
+" Save and close-buffer shortcuts
+nnoremap <leader>w :update<CR>
+nnoremap <leader>x :bdelete<CR>
+
+" Window navigation
+nnoremap <C-h> <C-w>h
+nnoremap <C-j> <C-w>j
+nnoremap <C-k> <C-w>k
+nnoremap <C-l> <C-w>l
+
+" Terminal: leave terminal mode with <Esc><Esc>
+tnoremap <Esc><Esc> <C-w>N
+
+" Keep selection when indenting in visual mode
+vnoremap < <gv
+vnoremap > >gv
+
+" Move selected lines up/down
+vnoremap J :m '>+1<CR>gv=gv
+vnoremap K :m '<-2<CR>gv=gv
+
+" Y yanks to end of line, like D and C
+nnoremap Y y$
+
+" Keep the cursor centered when jumping
+nnoremap n nzzzv
+nnoremap N Nzzzv
+nnoremap <C-d> <C-d>zz
+nnoremap <C-u> <C-u>zz
+
+" Commenting with gc (bundled with Vim 9.1+; silently skipped on older builds)
+silent! packadd comment
+
+" ==============================================================================
+" 7. AUTOCOMMANDS
+" ==============================================================================
+augroup UserAutocmds
+    autocmd!
+    " Restore the last cursor position when reopening a file
+    autocmd BufReadPost *
+        \ if line("'\"") >= 1 && line("'\"") <= line("$") && &filetype !~# 'commit'
+        \ |   exe "normal! g`\""
+        \ | endif
+    " Strip trailing whitespace on save, except where it is meaningful
+    autocmd BufWritePre *
+        \ if index(['markdown', 'diff', 'gitcommit', 'gitrebase', 'mail'], &filetype) < 0
+        \ |   call s:StripTrailingWhitespace()
+        \ | endif
+    " Two-space indent for web/config formats
+    autocmd FileType yaml,json,html,css,javascript,typescript,lua,sh
+        \ setlocal tabstop=2 shiftwidth=2 softtabstop=2
+    " Tabs are required in Makefiles
+    autocmd FileType make setlocal noexpandtab
+    " Netrw defines its own buffer-local <C-h>/<C-l>; restore window navigation
+    autocmd FileType netrw call s:NetrwMaps()
+    " Don't keep undo history for temp files (they often hold secrets)
+    autocmd BufWritePre /tmp/*,/dev/shm/* setlocal noundofile
+augroup END
+
+function! s:StripTrailingWhitespace() abort
+    let l:view = winsaveview()
+    keepjumps keeppatterns %s/\s\+$//e
+    call winrestview(l:view)
+endfunction
+
+function! s:NetrwMaps() abort
+    nmap <buffer> <C-l> <C-w>l
+    nmap <buffer> <C-h> <C-w>h
+endfunction
+
+" ==============================================================================
+" 8. COLOR-CODED STATUSLINE WITH GIT BRANCH
+" ==============================================================================
+set laststatus=2
+set showcmd
+
+" Highlights live in a function so they can be re-applied after :colorscheme
+function! s:DefineStatusColors() abort
+    highlight StatusNormal  ctermbg=4   ctermfg=15 guibg=#005f87 guifg=#ffffff
+    highlight StatusInsert  ctermbg=2   ctermfg=0  guibg=#4e9a06 guifg=#ffffff
+    highlight StatusVisual  ctermbg=5   ctermfg=15 guibg=#75507b guifg=#ffffff
+    highlight StatusReplace ctermbg=1   ctermfg=15 guibg=#cc0000 guifg=#ffffff
+    highlight StatusCommand ctermbg=3   ctermfg=0  guibg=#c4a000 guifg=#000000
+    highlight StatusGit     ctermbg=240 ctermfg=15 guibg=#4e545c guifg=#ffffff
+    highlight StatusReg     ctermbg=8   ctermfg=7  guibg=#2e3436 guifg=#babdb6
+endfunction
+
+call s:DefineStatusColors()
+augroup StatusColors
+    autocmd!
+    autocmd ColorScheme * call s:DefineStatusColors()
+augroup END
+
+" Keyed on the first character of mode(), so sub-modes (ic, niI, Rc, ...)
+" keep the colour of their parent mode.
+let s:modes = {
+    \ 'n': ['NORMAL',   'StatusNormal'],
+    \ 'i': ['INSERT',   'StatusInsert'],
+    \ 'v': ['VISUAL',   'StatusVisual'],
+    \ 'V': ['V-LINE',   'StatusVisual'],
+    \ "\<C-v>": ['V-BLOCK', 'StatusVisual'],
+    \ 's': ['SELECT',   'StatusVisual'],
+    \ 'S': ['SELECT',   'StatusVisual'],
+    \ 'R': ['REPLACE',  'StatusReplace'],
+    \ 'c': ['COMMAND',  'StatusCommand'],
+    \ 't': ['TERMINAL', 'StatusInsert'],
+    \ }
+
+" Look up the branch of the file's own directory, not Vim's cwd.
+" Computed once per buffer, then refreshed on write/focus/shell commands.
+" (Needs git 2.22+; a detached HEAD shows no branch.)
+function! s:UpdateGitBranch() abort
+    let b:git_branch = ''
+    if &buftype !=# '' || !executable('git')
+        return
+    endif
+    let l:dir = expand('%:p:h')
+    if !isdirectory(l:dir)
+        return
+    endif
+    let l:branch = trim(system('git -C ' . shellescape(l:dir)
+                \ . ' branch --show-current 2>/dev/null'))
+    if v:shell_error == 0 && !empty(l:branch)
+        let b:git_branch = ' git:' . l:branch . ' '
+    endif
+endfunction
+
+augroup GitBranchStatus
+    autocmd!
+    autocmd BufEnter * if !exists('b:git_branch') | call s:UpdateGitBranch() | endif
+    autocmd BufWritePost,FocusGained,ShellCmdPost * call s:UpdateGitBranch()
+augroup END
+
+" Only the focused window gets the colored line; others use StatusLineNC.
+function! StatusLine() abort
+    if g:statusline_winid != win_getid()
+        return ' %f %m%r%=%y %p%% %l:%c '
+    endif
+    let l:info = get(s:modes, mode()[0], ['NORMAL', 'StatusNormal'])
+    " 'noshowmode' hides Vim's own "recording @q" message, so show it here
+    let l:rec = reg_recording() !=# '' ? ' REC @' . reg_recording() . ' ' : ''
+    return '%#' . l:info[1] . '# ' . l:info[0] . ' '
+                \ . '%#StatusGit#%{get(b:, "git_branch", "")}'
+                \ . '%#StatusReg# %f %m%r%=' . l:rec
+                \ . '%y  %p%%  %l:%c '
+endfunction
+
+set statusline=%!StatusLine()
+
+" Redraw the statusline on mode/recording changes so the colors follow immediately
+augroup StatusRedraw
+    autocmd!
+    if exists('##ModeChanged')
+        autocmd ModeChanged * redrawstatus
+    endif
+    if exists('##RecordingEnter')
+        autocmd RecordingEnter * redrawstatus
+        " reg_recording() still reports the register inside RecordingLeave
+        autocmd RecordingLeave * call timer_start(1, {-> execute('redrawstatus')})
+    endif
+augroup END
