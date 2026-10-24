@@ -1,0 +1,37 @@
+#!/bin/sh
+# ~/.config/lf/previewer — args: $1 file, $2 width, $3 height
+# Text via bat, listings for archives/pdf/media, sixel images when running in foot.
+file=$1 w=$2 h=$3
+
+bat=$(command -v bat || command -v batcat || true)
+
+case $(file -Lb --mime-type -- "$file") in
+    text/*|application/json)
+        if [ -n "$bat" ]; then
+            "$bat" --color=always --style=plain --line-range=:200 -- "$file" || true
+        else
+            cat -v -- "$file" || true
+        fi
+        ;;
+    application/zip|application/gzip|application/x-tar|application/x-xz|application/x-bzip2|application/zstd|application/x-7z-compressed|application/vnd.rar|application/x-rar)
+        atool --list -- "$file" || bsdtar --list --file "$file"
+        ;;
+    application/pdf)
+        pdftotext -l 3 -nopgbrk -q -- "$file" - | fmt -w "$w"
+        ;;
+    audio/*|video/*)
+        mediainfo "$file" || exiftool "$file"
+        ;;
+    image/*)
+        case $TERM in
+            # --bg must match your terminal background (foot.ini [colors] background), else a black box shows
+            # kitty-protocol terminals: use chafa -f kitty instead of sixel
+            foot*) chafa -f sixel -s "${w}x${h}" --animate off --polite on -t 1 --bg black "$file" ;;
+            *) exiftool "$file" 2>/dev/null || file -Lb -- "$file" ;;
+        esac
+        ;;
+    *)
+        file -Lb -- "$file" | fold -s -w "$w"
+        ;;
+esac
+exit 0

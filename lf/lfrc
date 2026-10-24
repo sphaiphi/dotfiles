@@ -1,0 +1,121 @@
+# ~/.config/lf/lfrc — minimal lf config for sway (Wayland)
+# Adapted from the lf wiki (Tips, Integrations, Previews) and `lf -doc`.
+#
+# Needed:   fzf, glib (gio), wl-clipboard, moreutils (vidir), atool, xdg-open
+# Optional: zoxide, bat/batcat, chafa, poppler-utils, mediainfo
+
+# ---------- core ----------
+set shellopts '-eu'
+set ifs "\n"
+set scrolloff 8
+set incsearch
+set dircounts
+set info size
+set tabstop 4
+set watch
+set promptfmt "\033[34;1m%d\033[0m\033[1m%f\033[0m"
+set previewer ~/.config/lf/previewer
+
+# optional borders
+#set drawbox
+#set borderstyle roundbox
+
+# ---------- open ----------
+# text -> $EDITOR in the terminal, everything else -> xdg-open, detached
+cmd open &{{
+    set -f
+    case $(file --mime-type -Lb -- "$f") in
+        text/*|application/json|inode/x-empty) lf -remote "send $id \$\$EDITOR \$fx" ;;
+        *) for file in $fx; do xdg-open "$file" >/dev/null 2>&1 & done ;;
+    esac
+}}
+
+# ---------- file operations ----------
+# trash (freedesktop trash via gio) instead of rm
+cmd trash %set -f; gio trash $fx
+
+cmd mkdir %{{
+    IFS=" "
+    file="$*"
+    mkdir -p -- "$file"
+    lf -remote "send $id select \"$(printf '%s' "$file" | sed 's/\\/\\\\/g;s/"/\\"/g')\""
+}}
+
+cmd touch %{{
+    IFS=" "
+    file="$*"
+    touch -- "$file"
+    lf -remote "send $id select \"$(printf '%s' "$file" | sed 's/\\/\\\\/g;s/"/\\"/g')\""
+}}
+
+cmd extract %{{
+    set -f
+    atool -x $fx
+    lf -remote "send $id reload"
+}}
+
+# rename the selection (or just the current file) in $EDITOR; press v first to select everything.
+# vidir reads the names from stdin, so selected directories are renamed themselves
+# (passing them as arguments would edit their contents instead).
+cmd bulk-rename ${{
+    set -f
+    printf '%s\n' "$fx" | vidir - || true
+    lf -remote "send $id :unselect; reload"
+}}
+
+# copy full path(s) to the Wayland clipboard
+cmd yank-path &printf '%s' "$fx" | wl-copy
+
+# ---------- navigation ----------
+# fuzzy-jump to any non-hidden file/dir below the current directory
+cmd fzf-jump ${{
+    res="$(find . -mindepth 1 -not -path '*/.*' | fzf --reverse --header='jump' || true)"
+    if [ -n "$res" ]; then
+        if [ -d "$res" ]; then cmd=cd; else cmd=select; fi
+        res="$(printf '%s' "$res" | sed 's/\\/\\\\/g;s/"/\\"/g')"
+        lf -remote "send $id $cmd \"$res\""
+    fi
+}}
+
+# zoxide (optional)
+cmd z %{{
+    result="$(zoxide query --exclude "$PWD" "$@" | sed 's/\\/\\\\/g;s/"/\\"/g')"
+    lf -remote "send $id cd \"$result\""
+}}
+cmd zi ${{
+    result="$(zoxide query -i | sed 's/\\/\\\\/g;s/"/\\"/g')"
+    lf -remote "send $id cd \"$result\""
+}}
+
+# edit + hot-reload this file
+cmd edit-config ${{
+    $EDITOR ~/.config/lf/lfrc
+    lf -remote "send $id source ~/.config/lf/lfrc"
+}}
+
+# ---------- keys ----------
+map . set hidden!
+map D trash
+map x extract
+map a push :mkdir<space>
+map A push :touch<space>
+map R bulk-rename
+map Y yank-path
+map gf fzf-jump
+map Z push :z<space>
+map gz zi
+map gd cd ~/Downloads
+map gc cd ~/.config
+map C edit-config
+
+# ---------- sway integration ----------
+# Report the cwd to the terminal (OSC 7). foot's own "new terminal" key (ctrl+shift+n)
+# then opens in lf's directory; windows started by sway keybindings are not affected.
+# The path is percent-encoded so quotes/backslashes in directory names cannot break the command.
+cmd on-cd &{{
+    uri="$(printf '%s' "$PWD" | sed -e 's/%/%25/g' -e 's/ /%20/g' -e 's/"/%22/g' -e 's/\\/%5C/g' -e 's/#/%23/g' -e 's/?/%3F/g')"
+    lf -remote "send $id tty-write \"\033]7;file://$(uname -n)$uri\033\\\\\""
+    command -v zoxide >/dev/null && zoxide add "$PWD" || true
+}}
+cmd on-quit tty-write "\033]7;\033\\"
+on-cd
